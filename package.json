@@ -1,0 +1,12 @@
+{
+  "name": "tradesheet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A one-page, agency-ready trades resume built on the worker's own phone. Nothing leaves the device.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "e2e": "node e2e/smoke.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}

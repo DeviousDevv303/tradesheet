@@ -1,0 +1,28 @@
+{
+  "format": "tradesheet-profile",
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-27T12:00:00.000Z",
+  "profile": {
+    "_note": "FICTIONAL test person. Not the operator's data.",
+    "contact": { "name": "Alex Rivera Núñez", "phone": "(325) 555-0142", "email": "alex.rivera@example.com", "city": "Sweetwater", "state": "TX" },
+    "trades": ["wind", "electrical", "warehouse"],
+    "otherTrade": "",
+    "certs": [
+      { "id": "osha30", "expires": "" },
+      { "id": "gwo-bst", "expires": "2027-05" },
+      { "id": "twic", "number": "", "expires": "2026-11" },
+      { "id": "forklift", "expires": "2025-01" }
+    ],
+    "jobs": [
+      { "employer": "Mesa Wind Services", "agency": "Prairie Labor Staffing", "role": "Wind Turbine Technician", "city": "Sweetwater, TX", "start": "2024-03", "end": "", "current": true,
+        "bullets": [ { "id": "wd-maint" }, { "id": "wd-climb" }, { "id": "wd-troubleshoot" } ] },
+      { "employer": "Central Distribution", "agency": "", "role": "Forklift Operator", "city": "Abilene, TX", "start": "2022-06", "end": "2024-02", "current": false,
+        "bullets": [ { "id": "wh-forklift" }, { "id": "wh-rf" }, { "text": "Entrené a tres compañeros en el uso del escáner", "lang": "es" } ] },
+      { "employer": "Rivera Electric", "role": "Electrician Helper", "city": "", "start": "2020-01", "end": "2022-05", "current": false,
+        "bullets": [ { "id": "el-install" }, { "id": "el-loto" } ] }
+    ],
+    "availability": { "shifts": ["day", "night"], "overtime": true, "transport": true, "travel": true, "start": "" },
+    "references": [ { "name": "Dana López", "relation": "Site lead, Mesa Wind", "phone": "(325) 555-0199" } ],
+    "outputLang": "en"
+  }
+}
