@@ -27,8 +27,8 @@ async function tap(loc) {
   if (!top) fail(`covered button: ${(await loc.textContent())?.trim()}`)
   await loc.click({ force: true })
   const page = loc.page()
-  const junk = await page.evaluate(() => /\[object [A-Za-z]+\]|undefined|NaN/.test(document.body.innerText))
-  if (junk) fail(`rendering junk on screen after tapping "${(await loc.textContent().catch(() => ''))?.trim()}": ${(await page.evaluate(() => document.body.innerText)).match(/.{0,40}(\[object [A-Za-z]+\]|undefined|NaN).{0,20}/)?.[0]}`)
+  const junk = await page.evaluate(() => /\[object [A-Za-z]+\]|undefined|NaN|\bnull\b/.test(document.body.innerText))
+  if (junk) fail(`rendering junk on screen after tapping "${(await loc.textContent().catch(() => ''))?.trim()}": ${(await page.evaluate(() => document.body.innerText)).match(/.{0,40}(\[object [A-Za-z]+\]|undefined|NaN|\bnull\b).{0,20}/)?.[0]}`)
 }
 await new Promise(r => setTimeout(r, 800))
 const browser = await chromium.launch()
@@ -42,8 +42,8 @@ try {
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
     await page.addInitScript(() => document.addEventListener('securitypolicyviolation', e => console.error(`CSP ${e.violatedDirective} ${e.blockedURI}`)))
     await page.goto(APP)
-    const S = lang === 'es' ? { start: 'Empezar', next: 'Siguiente', name: 'Nombre completo', phone: 'Teléfono', role: 'Puesto', employer: 'Empleador', addJob: 'Agregar este trabajo', download: 'Descargar PDF', trade: 'Técnico de turbinas eólicas', cert: 'OSHA 30', bullet: 'Subí torres' }
-      : { start: 'Start', next: 'Next', name: 'Full name', phone: 'Phone', role: 'Job title', employer: 'Employer', addJob: 'Add this job', download: 'Download PDF', trade: 'Wind turbine technician', cert: 'OSHA 30', bullet: 'Climbed towers' }
+    const S = lang === 'es' ? { start: 'Empezar', next: 'Siguiente', name: 'Nombre completo', phone: 'Teléfono', role: 'Puesto', employer: 'Empleador', city: 'Ciudad (opcional)', addJob: 'Agregar este trabajo', download: 'Descargar PDF', trade: 'Técnico de turbinas eólicas', cert: 'OSHA 30', bullet: 'Subí torres' }
+      : { start: 'Start', next: 'Next', name: 'Full name', phone: 'Phone', role: 'Job title', employer: 'Employer', city: 'City (optional)', addJob: 'Add this job', download: 'Download PDF', trade: 'Wind turbine technician', cert: 'OSHA 30', bullet: 'Climbed towers' }
     await tap(page.getByRole('button', { name: S.start }))
     await page.getByLabel(S.name).fill('Prueba Ñandú Test')
     await page.getByLabel(S.phone).fill('555-0100')
@@ -56,6 +56,13 @@ try {
     await page.getByLabel(S.employer).fill('Mesa Wind')
     await tap(page.getByRole('button', { name: new RegExp(S.bullet) }))
     await tap(page.getByRole('button', { name: S.addJob }))
+    // a draft with no title or employer must stop Next and say so, not vanish
+    await page.getByLabel(S.city).fill('Abilene')
+    await tap(page.getByRole('button', { name: S.next }))
+    if (!(await page.getByTestId('job-error').isVisible())) fail(`${lang}: a half-typed job was dropped silently on Next`)
+    // phone run 2026-10-27: a job typed but not "added" must not vanish when the worker taps Next
+    await page.getByLabel(S.role).fill('Crane Operator')
+    await page.getByLabel(S.employer).fill('Big Lift Co')
     for (let i = 0; i < 3; i++) await tap(page.getByRole('button', { name: S.next }))
     const timer = await page.getByTestId('timer').textContent()
     const [dl] = await Promise.all([page.waitForEvent('download'), tap(page.getByTestId('download'))])
@@ -66,6 +73,8 @@ try {
     if (!text.includes('Prueba Ñandú Test')) fail(`${lang}: name missing from PDF text`)
     if (!/WORK EXPERIENCE/.test(text)) fail(`${lang}: output must default to English headings (operator decision)`)
     if (!text.includes('Climbed towers')) fail(`${lang}: picked bullet missing in English output`)
+    if (!text.includes('Crane Operator') || !text.includes('Big Lift Co')) fail(`${lang}: a typed job was dropped when Next was tapped without "add"`)
+    if (!(await page.getByTestId('preview').innerText()).includes('WORK EXPERIENCE')) fail(`${lang}: WORK EXPERIENCE missing from the on-screen preview`)
     if (pages !== 1) fail(`${lang}: expected 1 page, got ${pages}`)
     const stored = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('tradesheet.')))
     if (!stored.includes('tradesheet.profile.v1')) fail(`${lang}: personal mode should save the profile`)

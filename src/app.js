@@ -55,10 +55,21 @@ const chip = (label, on, onClick, cls = 'chip') => h('button', { type: 'button',
 const toggle = (label, on, onChange) => h('label', {}, h('input', { type: 'checkbox', checked: on, onchange: e => onChange(e.target.checked) }), ' ', label)
 
 function go(step) { state.step = Math.max(0, Math.min(STEPS.length - 1, step)); state.message = ''; if (STEPS[state.step] === 'review' && !state.finishedMs && state.startedAt) state.finishedMs = Date.now() - state.startedAt; render(); window.scrollTo(0, 0) }
-function nav(canNext = true) {
+/** beforeNext() may return false to stay on the step (it must then say why on screen). */
+function nav(canNext = true, beforeNext = () => true) {
   return h('div', { class: 'nav' }, h('div', { class: 'row' },
     h('button', { type: 'button', class: 'secondary', onclick: () => go(state.step - 1), text: T('back') }),
-    state.step < STEPS.length - 1 ? h('button', { type: 'button', class: 'primary', disabled: !canNext, onclick: () => { save(); go(state.step + 1) }, text: T('next') }) : null))
+    state.step < STEPS.length - 1 ? h('button', { type: 'button', class: 'primary', disabled: !canNext, onclick: () => { if (beforeNext() === false) return; save(); go(state.step + 1) }, text: T('next') }) : null))
+}
+/** The job being typed, if any. Adding it is what "Add this job" does; Next does it too, so a typed job is never lost. */
+const draftHasContent = d => [d.role, d.employer, d.agency, d.city, d.start, d.end, d.own].some(v => (v || '').trim()) || d.bullets.length > 0
+function addDraftJob() {
+  const p = state.profile, d = state.draft
+  if (!d.role.trim() && !d.employer.trim()) return false
+  const bullets = [...d.bullets.map(id => ({ id })), ...(d.own.trim() ? [{ text: d.own.trim(), lang: state.lang }] : [])]
+  p.jobs.push({ employer: d.employer.trim(), agency: d.agency.trim(), role: d.role.trim(), city: d.city.trim(), start: d.start, end: d.current ? '' : d.end, current: d.current, bullets })
+  state.draft = newDraft(); save()
+  return true
 }
 function progress() { return h('div', { class: 'progress', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': STEPS.length - 1, 'aria-valuenow': state.step }, h('div', { style: `width:${(state.step / (STEPS.length - 1)) * 100}%` })) }
 function topbar() {
@@ -130,13 +141,14 @@ const views = {
           d.bullets = d.bullets.includes(b.id) ? d.bullets.filter(x => x !== b.id) : d.bullets.length < MAX_PICKED ? [...d.bullets, b.id] : d.bullets; render()
         }, 'chip bullet'))),
         field(T('ownBullet'), d.own, setD('own')),
-        h('button', { type: 'button', class: 'primary', onclick: () => {
-          if (!d.role.trim() && !d.employer.trim()) return
-          const bullets = [...d.bullets.map(id => ({ id })), ...(d.own.trim() ? [{ text: d.own.trim(), lang: state.lang }] : [])]
-          p.jobs.push({ employer: d.employer.trim(), agency: d.agency.trim(), role: d.role.trim(), city: d.city.trim(), start: d.start, end: d.current ? '' : d.end, current: d.current, bullets })
-          state.draft = newDraft(); save(); render()
-        }, text: T('addJob') })),
-      nav()]
+        state.jobError ? h('div', { class: 'alert', 'data-testid': 'job-error', text: T('jobNeedsTitle') }) : null,
+        h('button', { type: 'button', class: 'primary', onclick: () => { state.jobError = !addDraftJob(); render() }, text: T('addJob') })),
+      // Next keeps a typed job (adds it) and never drops one silently: a draft with no title or employer stops here and says why.
+      nav(true, () => {
+        if (!draftHasContent(state.draft)) { state.jobError = false; return true }
+        if (addDraftJob()) { state.jobError = false; return true }
+        state.jobError = true; render(); return false
+      })]
   },
   avail() {
     const a = state.profile.availability
@@ -237,7 +249,10 @@ function refreshNext() {
   if (btn && STEPS[state.step] === 'contact') btn.disabled = !(c.name.trim() && c.phone.trim())
 }
 function render() {
-  app.replaceChildren(topbar(), state.step > 0 ? progress() : '', ...[views[STEPS[state.step]]()].flat(3))
+  // replaceChildren() turns null/undefined/false into the TEXT "null"/"undefined"/"false" (phone run 2026-10-27: "null" under the
+  // Download button where navigator.canShare is missing). Views use `cond ? el : null`, so empty slots are dropped here, once.
+  const kids = [topbar(), state.step > 0 ? progress() : null, views[STEPS[state.step]]()].flat(Infinity)
+  app.replaceChildren(...kids.filter(k => k !== null && k !== undefined && k !== false && k !== ''))
 }
 render()
 export const __debug = { state, STRINGS, bulletById, certById }
