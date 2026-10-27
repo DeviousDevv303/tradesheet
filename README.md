@@ -50,3 +50,8 @@ No runtime dependencies to install; `vendor/` holds the two self-hosted librarie
 - Fonts are the PDF standard Helvetica, not embedded (every reader supplies them; PDF/A archiving would need embedding).
 - No real worker or agency has used it. Hosting (GitHub Pages) is not set up by this commit.
 - No licence file: the owner decides how this code may be used.
+
+## Hosting (GitHub Pages, one setting)
+The app is static and uses relative paths, so it runs from a subpath. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `claude/tradesheet-v1`, folder `/ (root)` → Save.**
+It is then served at `https://deviousdevv303.github.io/tradesheet/` (GitHub shows the exact URL on that page). `.nojekyll` makes Pages serve the files as they are.
+Verified locally: `BASE=/tradesheet/ node e2e/smoke.mjs` runs the full phone flow under that subpath (English and Spanish, one-page PDF, zero off-site requests, assist-mode QR carries `/tradesheet/`).

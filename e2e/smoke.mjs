@@ -1,8 +1,9 @@
 // End-to-end check in a real Chromium on a phone-sized screen. Run: node e2e/smoke.mjs  (needs Playwright + Chromium and pdftotext)
+// BASE=/tradesheet/ node e2e/smoke.mjs serves the app under a subpath, as GitHub Pages does for a project site.
 // Asserts: the intake completes, the PDF downloads and parses, no request leaves the site, no CSP violation, no page error,
 // assist mode writes nothing to storage, and the clear ritual leaves no TradeSheet keys behind.
 import { spawn, execFileSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -11,7 +12,12 @@ const { chromium, devices } = createRequire(import.meta.url)('playwright')
 
 const PORT = 8765
 const root = new URL('..', import.meta.url).pathname
-const server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' })
+const BASE = process.env.BASE || '/'
+if (!/^\/([a-z0-9-]+\/)?$/.test(BASE)) throw new Error(`BASE must be "/" or "/<name>/", got ${BASE}`)
+// Under a subpath the server's root holds a link named after it, so only /<name>/... resolves to the app.
+const serveDir = BASE === '/' ? root : (() => { const d = mkdtempSync(join(tmpdir(), 'ts-base-')); mkdirSync(join(d, '.keep')); symlinkSync(root, join(d, BASE.slice(1, -1)), 'dir'); return d })()
+const APP = `http://127.0.0.1:${PORT}${BASE}`
+const server = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: serveDir, stdio: 'ignore' })
 const fail = m => { console.error('E2E FAIL:', m); process.exitCode = 1 }
 /** Tap like a person: scroll it into view, then require that the button itself is the topmost element at its centre
  *  (document.elementFromPoint), and only then click. Playwright's own covered-element heuristic misfires on sticky bars. */
@@ -35,7 +41,7 @@ try {
     page.on('pageerror', e => errors.push(e.message))
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
     await page.addInitScript(() => document.addEventListener('securitypolicyviolation', e => console.error(`CSP ${e.violatedDirective} ${e.blockedURI}`)))
-    await page.goto(`http://127.0.0.1:${PORT}/`)
+    await page.goto(APP)
     const S = lang === 'es' ? { start: 'Empezar', next: 'Siguiente', name: 'Nombre completo', phone: 'Teléfono', role: 'Puesto', employer: 'Empleador', addJob: 'Agregar este trabajo', download: 'Descargar PDF', trade: 'Técnico de turbinas eólicas', cert: 'OSHA 30', bullet: 'Subí torres' }
       : { start: 'Start', next: 'Next', name: 'Full name', phone: 'Phone', role: 'Job title', employer: 'Employer', addJob: 'Add this job', download: 'Download PDF', trade: 'Wind turbine technician', cert: 'OSHA 30', bullet: 'Climbed towers' }
     await tap(page.getByRole('button', { name: S.start }))
@@ -82,9 +88,9 @@ try {
   const page = await ctx.newPage()
   const errors = []
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
-  await page.goto(`http://127.0.0.1:${PORT}/?mode=assist`)
+  await page.goto(`${APP}?mode=assist`)
   const qrLabel = await page.locator('.qr').getAttribute('aria-label')
-  if (qrLabel !== `http://127.0.0.1:${PORT}/`) fail(`assist: QR must carry only the app URL, got ${qrLabel}`)
+  if (qrLabel !== APP) fail(`assist: QR must carry only the app URL, got ${qrLabel}`)
   if (!(await page.locator('.qr svg').count())) fail('assist: QR did not render')
   await tap(page.getByRole('button', { name: 'Start' }))
   await page.getByLabel('Full name').fill('Tablet Walk-in')

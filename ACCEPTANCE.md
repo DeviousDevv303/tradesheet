@@ -10,7 +10,7 @@ with an independent parser (poppler):
 - a too-long profile is never cut off; unsupported characters (emoji) never break the PDF.
 
 ## 2. The 5-minute self-test (Cristian, on his own phone, with his own work history)
-1. Open the app on your phone (once hosted). Do not prepare anything first.
+1. Open `https://deviousdevv303.github.io/tradesheet/` on your phone (after the one Pages setting in README → Hosting). Do not prepare anything first.
 2. Tap **Start**: the clock starts. Enter your real contact info, trades, certs with expiry months, every job you want on it, availability, references.
 3. On the last screen the app shows **"Finished in m:ss"**. **Pass: 5:00 or less.** Write the time down.
 4. Download the PDF (English, the default). Pass: one page; reads right to you as an agency would read it; certs at the top with correct dates.
