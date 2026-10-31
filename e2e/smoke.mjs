@@ -22,7 +22,9 @@ const fail = m => { console.error('E2E FAIL:', m); process.exitCode = 1 }
 /** Tap like a person: scroll it into view, then require that the button itself is the topmost element at its centre
  *  (document.elementFromPoint), and only then click. Playwright's own covered-element heuristic misfires on sticky bars. */
 async function tap(loc) {
-  await loc.scrollIntoViewIfNeeded()
+  // Centre it in the viewport: with scrollIntoViewIfNeeded, Chromium 131 (Playwright 1.49, what CI installs) leaves a low button under the sticky Next bar;
+  // newer Chromium scrolls further. A person would scroll until the button is clear, so the test does too.
+  await loc.evaluate(el => el.scrollIntoView({ block: 'center' }))
   const top = await loc.evaluate(el => { const r = el.getBoundingClientRect(); const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return el === at || el.contains(at) })
   if (!top) fail(`covered button: ${(await loc.textContent())?.trim()}`)
   await loc.click({ force: true })
